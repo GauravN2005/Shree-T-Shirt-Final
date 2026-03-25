@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Uniform & Stationery Billing</title>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons: clean, minimal icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- SheetJS for Excel parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="style.css?v=4">
+    <style>
+        /* Hard override to ensure updated invoice styling even if old CSS is cached */
+        #bill-draft-modal .modal-content {
+            max-width: 860px !important;
+            width: min(94vw, 860px) !important;
+        }
+
+        #paper-bill-content {
+            background: #ffffff !important;
+            background-image: none !important;
+            width: min(210mm, 100%) !important;
+            max-width: 794px !important;
+            border: 1px solid #d8d8d8 !important;
+        }
+
+        #paper-bill-content::before,
+        #paper-bill-content::after {
+            display: none !important;
+            content: none !important;
+        }
+
+        #paper-bill-content .paper-bill-inner {
+            padding: 10mm !important;
+        }
+
+        #paper-bill-content .paper-bill-items {
+            font-size: 12px !important;
+        }
+
+        #paper-bill-content .paper-bill-info,
+        #paper-bill-content .paper-bill-terms,
+        #paper-bill-content .paper-bill-amount-words {
+            font-size: 12px !important;
+            line-height: 1.35 !important;
+        }
+    </style>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden">
+        <i class="ph ph-check-circle"></i>
+        <span id="toast-message">Success Notification</span>
+    </div>
+
+    <!-- PAGE 1: Login View -->
+    <div id="view-login" class="view flex-center">
+        <div class="login-card card">
+            <div class="login-header">
+                <h2>School Uniform & Stationery Billing System</h2>
+                <p>Welcome back! Please login to continue.</p>
+            </div>
+            <form id="login-form">
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="login-role">
+                        <option value="admin">Admin</option>
+                        <option value="worker">Worker</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="login-email" placeholder="Enter email" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="password-input-wrap" style="position: relative;">
+                        <input type="password" id="login-password" placeholder="Enter password" required
+                            style="padding-right: 3rem;">
+                        <button type="button" id="login-password-toggle" class="password-toggle-btn"
+                            onclick="(function(btn){var p=document.getElementById('login-password');if(!p){return;}var show=p.type==='password';p.type=show?'text':'password';var i=btn.querySelector('i');if(i){i.className='ph '+(show?'ph-eye-slash':'ph-eye');}btn.setAttribute('aria-label',show?'Hide password':'Show password');})(this); return false;"
+                            style="position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); border: none; background: transparent; cursor: pointer;"
+                            data-target-input="login-password" aria-label="Show password">
+                            <i class="ph ph-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">
+                    <span>Login</span>
+                    <i class="ph ph-arrow-right"></i>
+                </button>
+                <div class="text-center mt-3">
+                    <a href="#" onclick="showRegisterModal()" class="text-muted text-sm">Don't have an account?
+                        Register</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="register-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeModal('register-modal')"></div>
+        <div class="modal-content card slide-up">
+            <div class="modal-header">
+                <h3>Register New Account</h3>
+                <button class="btn-icon" onclick="closeModal('register-modal')"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="register-form" class="modal-body">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="register-name" placeholder="Enter your full name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="register-email" placeholder="Enter your email" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="register-password" placeholder="Enter password" required>
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="register-role" required>
+                        <option value="">Select Role</option>
+                        <option value="admin">Admin</option>
+                        <option value="worker">Worker</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">
+                    <span>Register</span>
+                    <i class="ph ph-user-plus"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- PAGE 2: School Selection View -->
+    <div id="view-school-select" class="view hidden flex-center bg-dots">
+        <div class="school-select-card card">
+            <div class="card-header-center">
+                <h2>Select School</h2>
+                <p>Choose a school to manage billing and students.</p>
+            </div>
+            <div class="form-group">
+                <label>School</label>
+                <select id="school-dropdown">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+            <div class="grid-buttons">
+                <button type="button" class="btn btn-outline" onclick="openModal('add-school-modal')">
+                    <i class="ph ph-plus"></i> Add School
+                </button>
+                <button type="button" class="btn btn-primary" onclick="continueToDashboard()">
+                    Continue <i class="ph ph-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 3: Add School Modal -->
+    <div id="add-school-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeModal('add-school-modal')"></div>
+        <div class="modal-content card slide-up">
+            <div class="modal-header">
+                <h3>Add New School</h3>
+                <button class="btn-icon" onclick="closeModal('add-school-modal')"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="add-school-form" class="modal-body">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>School Name</label>
+                        <input type="text" id="add-school-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Contact Person</label>
+                        <input type="text" id="add-school-contact-person" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Address</label>
+                    <input type="text" id="add-school-address" required>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="tel" id="add-school-phone" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Academic Year</label>
+                        <select id="add-school-year">
+                            <option>2024-2025</option>
+                            <option>2025-2026</option>
+                            <option>2026-2027</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid-2" style="display: none;">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" id="add-school-email">
+                        <small class="text-muted">Feature coming soon</small>
+                    </div>
+                </div>
+
+                <div class="grid-3" style="display: none;">
+                    <div class="form-group">
+                        <label>Contract Start Date</label>
+                        <input type="date" id="add-school-start">
+                    </div>
+                    <div class="form-group">
+                        <label>Contract End Date</label>
+                        <input type="date" id="add-school-end">
+                    </div>
+                </div>
+
+                <!-- School Pricing Upload Section -->
+                <div class="upload-section mt-4">
+                    <h4>School Pricing Upload</h4>
+                    <p class="text-muted text-sm">Upload pricing in `.xls`, `.xlsx`, or `.csv` format.
+                        Required columns: <strong>standard</strong>, <strong>item</strong>, <strong>gender</strong>, <strong>size</strong>, <strong>price</strong>.</p>
+                    <div class="file-upload-box" id="school-excel-upload-box">
+                        <div class="file-info hidden" id="school-file-info">
+                            <i class="ph ph-file-xls" style="color: var(--secondary); font-size: 2rem;"></i>
+                            <span id="school-file-name" class="font-medium"></span>
+                        </div>
+                        <div id="school-upload-actions">
+                            <input type="file" id="school-excel-file" accept=".xls,.xlsx,.csv" class="hidden">
+                            <button type="button" class="btn btn-outline"
+                                onclick="document.getElementById('school-excel-file').click()">
+                                <i class="ph ph-upload-simple"></i> Choose File
+                            </button>
+                            <div class="text-sm text-muted mt-2">Example: `1, Shirt, Boys, 6, 580`</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer mt-4 flex-end gap-2">
+                    <button type="button" class="btn btn-text" onclick="closeModal('add-school-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add School</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD SHELL -->
+    <div id="app-shell" class="hidden">
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Top Navigation Bar -->
+            <header class="topbar">
+                <div class="topbar-left" style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="cursor: pointer; display: flex; align-items: center;" onclick="switchNav('dashboard')">
+                        <img src="img/logo.png" alt="Logo" style="height: 48px; object-fit: contain;" />
+                    </div>
+                    <div class="active-school-badge">
+                        <i class="ph-fill ph-buildings"></i>
+                        <span id="active-school-name">School Name</span>
+                        <button class="btn-icon-small text-muted" onclick="showView('view-school-select')"
+                            title="Change School"><i class="ph ph-arrows-left-right"></i></button>
+                    </div>
+                </div>
+                <div class="topbar-right" style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div class="user-badge">
+                        <div class="avatar"><i class="ph-fill ph-user"></i></div>
+                        <div class="user-info">
+                            <span class="user-name">Shop Worker</span>
+                            <span class="user-role badge badge-primary" id="active-user-role">Worker</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline text-danger" onclick="logout()"
+                        style="border: none; padding: 0.5rem; background: var(--bg-color);">
+                        <i class="ph ph-sign-out" style="font-size: 1.25rem;"></i> <span
+                            style="font-weight: 600;">Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dashboard Content Container -->
+            <div class="content-container">
+
+                <!-- Sub-View: Dashboard Home (PAGE 4) -->
+                <div id="subview-dashboard" class="subview active">
+                    <div class="page-header">
+                        <h1 class="page-title">Dashboard Overview</h1>
+                        <p class="text-muted">Quick actions and summary for the selected school.</p>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <!-- Action Cards -->
+                        <div class="action-card card hover-lift" onclick="switchNav('parents')">
+                            <div class="action-icon bg-orange-light text-orange"><i class="ph ph-user-list"></i></div>
+                            <h3>Parents Details</h3>
+                            <p>View parent contact information</p>
+                        </div>
+                        <div class="action-card card hover-lift" onclick="switchNav('students-list')">
+                            <div class="action-icon bg-blue-light text-blue"><i class="ph ph-user-plus"></i></div>
+                            <h3>Add/View Students</h3>
+                            <p>Manage student profiles and details</p>
+                        </div>
+                        <div class="action-card card hover-lift" onclick="switchNav('students-upload')">
+                            <div class="action-icon bg-green-light text-green"><i class="ph ph-file-xls"></i></div>
+                            <h3>Upload Student Excel</h3>
+                            <p>Bulk import student data</p>
+                        </div>
+                        <div class="action-card card hover-lift" onclick="switchNav('billing')">
+                            <div class="action-icon bg-purple-light text-purple"><i class="ph ph-receipt"></i></div>
+                            <h3>Billing / Invoice</h3>
+                            <p>Create new POS bills for students</p>
+                        </div>
+                        <div class="action-card card hover-lift" onclick="switchNav('invoices')">
+                            <div class="action-icon bg-orange-light text-orange"><i class="ph ph-files"></i></div>
+                            <h3>Draft Bills</h3>
+                            <p>View and manage draft invoices</p>
+                        </div>
+                        <div class="action-card card hover-lift" onclick="switchNav('stocks')">
+                            <div class="action-icon bg-teal-light text-teal"><i class="ph ph-package"></i></div>
+                            <h3>Available Stocks</h3>
+                            <p>Manage inventory and upload stock data</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub-View: Upload Student Data (PAGE 5) -->
+                <div id="subview-students-upload" class="subview hidden">
+                    <div class="page-header flex-between">
+                        <div>
+                            <h1 class="page-title">Upload Student Data</h1>
+                            <button class="btn btn-text text-sm p-0 m-0" onclick="switchNav('students-list')">
+                                <i class="ph ph-arrow-left"></i> Back to Students
+                            </button>
+                        </div>
+                        <button class="btn btn-outline" onclick="switchNav('dashboard')">Back to Dashboard</button>
+                    </div>
+                    <div class="card p-xl">
+                        <div class="upload-area text-center border-dashed p-xl radius-md mb-4" id="main-upload-area">
+                            <i class="ph ph-upload-simple upload-icon"></i>
+                            <h3>Upload Excel File</h3>
+                            <p class="text-muted">Upload Excel file containing student data (.xls or .xlsx)<br>
+                                <em>Required columns: Serial Number, Standard, Student Name, Phone Number</em>
+                            </p>
+
+                            <input type="file" id="bulk-student-file" accept=".xls,.xlsx,.csv" class="hidden">
+                            <button class="btn btn-primary mt-4"
+                                onclick="document.getElementById('bulk-student-file').click()">
+                                Choose File
+                            </button>
+                            <div id="bulk-file-display" class="hidden mt-4">
+                                <span class="badge badge-success" id="bulk-file-name"></span>
+                            </div>
+                        </div>
+                        <div class="flex-end">
+                            <button class="btn btn-primary" id="btn-import-students" onclick="mockImportStudents()">
+                                <i class="ph ph-download-simple"></i> Import Students
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Sub-View: Student List Page (PAGE 6) -->
+                <div id="subview-students-list" class="subview hidden">
+                    <div class="page-header flex-between">
+                        <div>
+                            <h1 class="page-title">Students</h1>
+                            <button class="btn btn-text text-sm p-0 m-0" onclick="switchNav('dashboard')">
+                                <i class="ph ph-arrow-left"></i> Back to Dashboard
+                            </button>
+                        </div>
+                        <div class="header-actions">
+                            <div class="search-box">
+                                <i class="ph ph-magnifying-glass"></i>
+                                <input type="text" id="search-student" placeholder="Search by name or std...">
+                            </div>
+                            <button class="btn btn-outline admin-only" id="btn-delete-selected-students" onclick="deleteSelectedStudents()">
+                                <i class="ph ph-trash"></i> Delete Selected
+                            </button>
+                            <!-- new add student button -->
+                            <button class="btn btn-primary" id="btn-add-student" onclick="openAddStudentModal()">
+                                <i class="ph ph-plus"></i> Add Student
+                            </button>
+                            <button class="btn btn-primary" onclick="switchNav('students-upload')">
+                                <i class="ph ph-upload-simple"></i> Upload Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card p-md mb-3">
+                        <div class="flex-between mb-2">
+                            <h3>Uploaded Files</h3>
+                            <span class="text-sm text-muted">Click a file button to view only that file data in table.</span>
+                        </div>
+                        <div id="uploaded-file-buttons" class="flex gap-2" style="flex-wrap: wrap;"></div>
+                        <p id="uploaded-file-buttons-empty" class="text-sm text-muted">No uploaded files yet.</p>
+                    </div>
+
+                    <div class="card table-card table-responsive">
+                        <table class="table" id="students-table">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="students-select-all" onchange="toggleSelectAllStudents(this.checked)">
+                                    </th>
+                                    <th>Serial No.</th>
+                                    <th>Standard</th>
+                                    <th>Student Name</th>
+                                    <th>Phone Number</th>
+                                    <th class="text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Generated by JS -->
+                            </tbody>
+                        </table>
+                        <div id="empty-students" class="empty-state hidden">
+                            <i class="ph ph-users"></i>
+                            <p>No students found. Add some data.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub-View: Parent Details Page (PAGE 11) -->
+                <div id="subview-parents" class="subview hidden">
+                    <div class="page-header flex-between">
+                        <div>
+                            <h1 class="page-title">Parent Details</h1>
+                            <button class="btn btn-text text-sm p-0 m-0" onclick="switchNav('dashboard')">
+                                <i class="ph ph-arrow-left"></i> Back to Dashboard
+                            </button>
+                        </div>
+                        <button class="btn btn-primary admin-only" onclick="openAddParentModal()">
+                            <i class="ph ph-plus"></i> Add Parent Details
+                        </button>
+                    </div>
+                    <div class="card table-card table-responsive">
+                        <table class="table" id="parents-table">
+                            <thead>
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th>Parent Name</th>
+                                    <th>Phone Number</th>
+                                    <th>Address</th>
+                                    <th class="text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Generated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub-View: Draft Invoices Management (PAGE 10) -->
+                <div id="subview-invoices" class="subview hidden">
+                    <div class="page-header flex-between">
+                        <div>
+                            <h1 class="page-title">Invoices</h1>
+                            <button class="btn btn-text text-sm p-0 m-0" onclick="switchNav('students-list')">
+                                <i class="ph ph-arrow-left"></i> Back to Students
+                            </button>
+                        </div>
+                        <div class="search-box">
+                            <i class="ph ph-magnifying-glass"></i>
+                            <input type="text" placeholder="Search invoices...">
+                        </div>
+                    </div>
+
+                    <div class="card table-card table-responsive">
+                        <table class="table" id="invoices-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice ID</th>
+                                    <th>Student Name</th>
+                                    <th>School</th>
+                                    <th>Total Amount</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Generated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Sub-View: Billing Students Status -->
+                <div id="subview-billing" class="subview hidden">
+                    <div class="page-header flex-between">
+                        <div>
+                            <h1 class="page-title">Billing / Invoice</h1>
+                            <button class="btn btn-text text-sm p-0 m-0" onclick="switchNav('dashboard')">
+                                <i class="ph ph-arrow-left"></i> Back to Dashboard
+                            </button>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <button class="btn btn-primary" onclick="exportTotalSaleXls()">
+                                <i class="ph ph-file-xls"></i> Export Total Sale
+                            </button>
+                            <div class="search-box">
+                                <i class="ph ph-magnifying-glass"></i>
+                                <input type="text" id="search-billing-student" placeholder="Search invoices...">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card table-card table-responsive">
+                        <table class="table" id="billing-invoices-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice ID</th>
+                                    <th>Student Name</th>
+                                    <th>School</th>
+                                    <th>Total Amount</th>
+                                    <th>Status</th>
+                                    <th>Mode of Payment</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Generated by JS -->
+                            </tbody>
+                        </table>
+                        <div id="empty-billing-students" class="empty-state hidden">
+                            <i class="ph ph-files"></i>
+                            <h3>No Paid Bills Found</h3>
+                            <p>No paid bills are available for this school.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub-View: POS Billing (PAGE 7, 8, 9) -->
+                <div id="subview-billing-pos" class="subview hidden">
+                    <div class="page-header flex-between">
+                        <div>
+                            <h1 class="page-title">Create Bill</h1>
+                            <button class="btn btn-text text-sm p-0 m-0" onclick="switchNav('students-list')">
+                                <i class="ph ph-arrow-left"></i> Back to Students
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="billing-container">
+                        <!-- Left Layout: Student Info + POS Grid -->
+                        <div class="billing-main">
+                            <!-- PAGE 7: Student Info Card -->
+                            <div class="card student-info-card mb-4 p-md">
+                                <div class="flex-between align-start">
+                                    <div class="student-profile-header">
+                                        <div class="avatar avatar-lg bg-blue-light text-blue">
+                                            <i class="ph-fill ph-student"></i>
+                                        </div>
+                                        <div class="info">
+                                            <h3 class="m-0" id="bill-student-name">Student Name</h3>
+                                            <span class="badge badge-outline mt-1" id="bill-student-std">Standard
+                                                XX</span>
+                                        </div>
+                                    </div>
+                                    <div class="meta-details text-right text-sm">
+                                        <div class="text-muted">Parent: <strong class="text-dark"
+                                                id="bill-parent-name">N/A</strong></div>
+                                        <div class="text-muted">Phone: <strong class="text-dark"
+                                                id="bill-student-phone">000-000-0000</strong></div>
+                                        <div class="text-muted">House: <strong class="text-dark"
+                                                id="bill-student-house">N/A</strong></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PAGE 8: Uniform Item Billing Grid -->
+                            <div class="section-title mb-3">
+                                <h3>Select Uniform Items</h3>
+                                <div class="search-box">
+                                    <i class="ph ph-magnifying-glass"></i>
+                                    <input type="text" id="search-items" placeholder="Search items...">
+                                </div>
+                            </div>
+
+                            <div class="pos-grid" id="pos-items-grid">
+                                <!-- Generated by JS posItems -->
+                            </div>
+                        </div>
+
+                        <!-- Right Layout: Billing Summary -->
+                        <!-- PAGE 9: BILLING SUMMARY -->
+                        <div class="billing-sidebar">
+                            <div class="card summary-card sticky-sidebar">
+                                <div class="card-header pb-0 border-none">
+                                    <h3>Current Bill</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="selected-items-list" id="cart-items-list">
+                                        <div class="empty-cart text-center text-muted p-4">
+                                            <i class="ph ph-shopping-cart" style="font-size: 2rem;"></i>
+                                            <p>No items selected yet.</p>
+                                        </div>
+                                        <!-- Cart items injected here -->
+                                    </div>
+
+                                    <div class="divider"></div>
+
+                                    <div class="bill-totals">
+                                        <div class="flex-between mb-2">
+                                            <span class="text-muted">Subtotal</span>
+                                            <span class="font-medium">₹<span id="bill-subtotal">0.00</span></span>
+                                        </div>
+                                        <div class="flex-between mb-2">
+                                            <span class="text-muted">Tax (0%)</span>
+                                            <span class="font-medium">₹0.00</span>
+                                        </div>
+                                        <div class="total-row flex-between mt-3 pt-3 border-top">
+                                            <span class="total-label">Total Amount</span>
+                                            <span class="total-value text-primary font-bold">₹<span
+                                                    id="bill-total">0.00</span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-footer summary-actions">
+                                    <button class="btn btn-outline btn-block mb-3" onclick="saveAsDraft()">
+                                        <i class="ph ph-bookmark-simple"></i> Save as Draft
+                                    </button>
+                                    <button class="btn btn-primary btn-block mb-3 btn-lg shadow-btn"
+                                        id="btn-generate-invoice"
+                                        onclick="generateInvoice()">
+                                        <i class="ph ph-receipt"></i> Generate Invoice
+                                    </button>
+
+                                    <div class="mt-2" style="text-align:left;">
+                                        <div class="text-muted text-sm mb-2">Mode of Payment</div>
+                                        <div style="display:flex; gap:0.5rem;">
+                                            <button type="button" id="payment-mode-cash" class="btn btn-primary"
+                                                style="flex:1;" onclick="setPaymentMode('cash')">
+                                                <i class="ph ph-money"></i> Cash
+                                            </button>
+                                            <button type="button" id="payment-mode-online" class="btn btn-outline"
+                                                style="flex:1;" onclick="setPaymentMode('online')">
+                                                <i class="ph ph-device-mobile"></i> Online
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub-View: Available Stocks -->
+                <div id="subview-stocks" class="subview hidden">
+                    <div class="page-header flex-between stocks-header-wrap">
+                        <div>
+                            <h1 class="page-title">Available Stocks</h1>
+                            <button class="btn btn-text text-sm p-0 m-0" onclick="switchNav('dashboard')">
+                                <i class="ph ph-arrow-left"></i> Back to Dashboard
+                            </button>
+                        </div>
+
+                        <button type="button" id="btn-export-available-stock" class="btn btn-primary" onclick="exportAvailableStockXls()">
+                            <i class="ph ph-file-xls"></i> Export Available Stock
+                        </button>
+
+                        <div class="stocks-upload-panel card">
+                            <div class="stocks-upload-title">
+                                <i class="ph ph-upload-simple"></i>
+                                <span>Upload Stock Excel</span>
+                            </div>
+                            <input type="file" id="stock-file-input" accept=".xls,.xlsx,.csv" class="hidden">
+                            <div class="stocks-upload-actions">
+                                <button class="btn btn-outline"
+                                    onclick="document.getElementById('stock-file-input').click()">
+                                    Choose File
+                                </button>
+                                <button class="btn btn-primary" id="btn-upload-stocks" onclick="uploadStocks()">
+                                    <i class="ph ph-download-simple"></i> Upload
+                                </button>
+                            </div>
+                            <div id="stock-file-display" class="hidden mt-2">
+                                <span class="badge badge-success" id="stock-file-name"></span>
+                            </div>
+                            <p class="text-muted text-xs mt-2 mb-0">Required columns: Standard, Item, Gender, Size, Price, Stock</p>
+                        </div>
+                    </div>
+
+                    <div class="card table-card table-responsive">
+                        <h3 class="mb-3">Stock Inventory Summary</h3>
+                        <table class="table" id="stocks-table">
+                            <thead>
+                                <tr>
+                                    <th>Standard</th>
+                                    <th>Items</th>
+                                    <th>Gender</th>
+                                    <th>Stocks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Generated by JS -->
+                            </tbody>
+                        </table>
+                        <div id="empty-stocks" class="empty-state hidden">
+                            <i class="ph ph-package"></i>
+                            <h3>No Stock Records</h3>
+                            <p>Please upload stock inventory to see available items.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <!-- /content-container -->
+        </main>
+    </div>
+
+    <!-- PAGE X: Add Student Modal -->
+    <div id="add-student-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeModal('add-student-modal')"></div>
+        <div class="modal-content card slide-up">
+            <div class="modal-header">
+                <h3>Add New Student</h3>
+                <button class="btn-icon" onclick="closeModal('add-student-modal')"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="add-student-form" class="modal-body">
+                <div class="form-group">
+                    <label>Student Name</label>
+                    <input type="text" id="add-student-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Standard</label>
+                    <select id="add-student-class" required>
+                        <option value="">Select Standard</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Gender</label>
+                    <select id="add-student-gender" required>
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Parent Name</label>
+                        <input type="text" id="add-student-parent" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Parent Phone</label>
+                        <input type="tel" id="add-student-parent-phone" required>
+                    </div>
+                </div>
+
+                <!-- uniform items selection inside modal -->
+                <div class="section-title mb-3 mt-4">
+                    <h3>Select Uniform Items</h3>
+                    <div class="search-box">
+                        <i class="ph ph-magnifying-glass"></i>
+                        <input type="text" id="search-items-student" placeholder="Search items...">
+                    </div>
+                </div>
+                <div class="pos-grid" id="modal-pos-items-grid">
+                    <!-- generated by JS -->
+                </div>
+                <div class="divider mt-4"></div>
+                <div id="modal-cart-items-list" class="selected-items-list">
+                    <div class="empty-cart text-center text-muted p-4">
+                        <i class="ph ph-shopping-cart" style="font-size: 2rem;"></i>
+                        <p>No items selected yet.</p>
+                    </div>
+                </div>
+                <div class="bill-totals mt-3">
+                    <div class="flex-between mb-2">
+                        <span class="text-muted">Subtotal</span>
+                        <span class="font-medium">₹<span id="modal-bill-subtotal">0.00</span></span>
+                    </div>
+                    <div class="total-row flex-between mt-3 pt-3 border-top">
+                        <span class="total-label">Total Amount</span>
+                        <span class="total-value text-primary font-bold">₹<span id="modal-bill-total">0.00</span></span>
+                    </div>
+                </div>
+
+                <div class="modal-footer mt-4 flex-end gap-2">
+                    <button type="button" class="btn btn-text" onclick="closeModal('add-student-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Student</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Edit Student Modal -->
+    <div id="edit-student-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeModal('edit-student-modal')"></div>
+        <div class="modal-content card slide-up">
+            <div class="modal-header">
+                <h3>Edit Student</h3>
+                <button class="btn-icon" onclick="closeModal('edit-student-modal')"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="edit-student-form" class="modal-body">
+                <div class="form-group">
+                    <label>Student Name</label>
+                    <input type="text" id="edit-student-name" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Class</label>
+                    <input type="text" id="edit-student-class" required placeholder="e.g. 10th A">
+                </div>
+
+                <div class="form-group">
+                    <label>Gender</label>
+                    <select id="edit-student-gender" required>
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Parent Name</label>
+                        <input type="text" id="edit-student-parent" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Parent Phone</label>
+                        <input type="tel" id="edit-student-parent-phone" required>
+                    </div>
+                </div>
+
+                <div class="section-title mb-3 mt-4">
+                    <h3>Uniform Details (from uploaded student file)</h3>
+                </div>
+                <div class="pos-grid" id="edit-student-uniform-grid">
+                    <!-- generated by JS -->
+                </div>
+
+                <div class="modal-footer mt-4 flex-end gap-2">
+                    <button type="button" class="btn btn-text"
+                        onclick="closeModal('edit-student-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Parent Modal -->
+    <div id="add-parent-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeModal('add-parent-modal')"></div>
+        <div class="modal-content card slide-up">
+            <div class="modal-header">
+                <h3>Add Parent Details</h3>
+                <button class="btn-icon" onclick="closeModal('add-parent-modal')"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="add-parent-form" class="modal-body">
+                <div class="form-group">
+                    <label>Student Name</label>
+                    <select id="add-parent-student" required>
+                        <option value="">Select Student</option>
+                        <!-- Generated by JS -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Parent Name</label>
+                    <input type="text" id="add-parent-name" required placeholder="Enter parent name">
+                </div>
+                <div class="form-group">
+                    <label>Parent Phone</label>
+                    <input type="tel" id="add-parent-phone" required placeholder="Enter phone number">
+                </div>
+                <div class="modal-footer mt-4 flex-end gap-2">
+                    <button type="button" class="btn btn-text" onclick="closeModal('add-parent-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Parent</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Invoice PDF Simulator Modal -->
+    <div id="invoice-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeModal('invoice-modal')"></div>
+        <div class="modal-content card slide-up">
+            <div class="modal-header">
+                <h3>Invoice Details</h3>
+                <button class="btn-icon" onclick="closeModal('invoice-modal')"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="modal-body p-xl text-center bg-light">
+                <i class="ph ph-file-pdf text-danger" style="font-size: 4rem;"></i>
+                <h2 class="mt-3">Invoice Generated!</h2>
+                <p class="text-muted">Invoice #INV-<span id="success-invoice-id"></span> has been created.</p>
+                <div class="flex-center gap-3 mt-4">
+                    <button class="btn btn-outline" onclick="closeModal('invoice-modal'); switchNav('invoices')">View
+                        All Invoices</button>
+                    <button class="btn btn-primary"><i class="ph ph-download-simple"></i> Download PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paper Bill Draft Modal -->
+    <div id="bill-draft-modal" class="modal hidden">
+        <div class="modal-overlay" onclick="closeModal('bill-draft-modal')"></div>
+        <div class="modal-content slide-up">
+            <!-- The paper receipt -->
+            <div class="paper-bill" id="paper-bill-content">
+                <div class="paper-bill-inner">
+                    <!-- Header -->
+                    <div class="paper-bill-header">
+                        <div class="paper-bill-shop-name">UNIFORM & STATIONERY SHOP</div>
+                        <div class="paper-bill-tagline">Quality School Supplies Since 1995</div>
+                        <div class="paper-bill-address">
+                            123, Main Market, Near City School<br>
+                            Mumbai - 400001, Maharashtra<br>
+                            Phone: +91-22-23456789 | Email: info@uniformshop.com
+                        </div>
+                        <div class="paper-bill-gst">GSTIN: 27AAAPL1234C1ZY</div>
+                    </div>
+
+                    <hr class="paper-bill-divider-solid">
+
+                    <!-- Bill meta info -->
+                    <div class="paper-bill-info-section">
+                        <div class="paper-bill-info-row">
+                            <div class="paper-bill-info-col">
+                                <div class="paper-bill-info">
+                                    <span>Invoice #</span>
+                                    <span id="pb-invoice-id">—</span>
+                                </div>
+                                <div class="paper-bill-info">
+                                    <span>Date</span>
+                                    <span id="pb-date">—</span>
+                                </div>
+                                <div class="paper-bill-info">
+                                    <span>Time</span>
+                                    <span id="pb-time">—</span>
+                                </div>
+                            </div>
+                            <div class="paper-bill-info-col">
+                                <div class="paper-bill-info">
+                                    <span>Student Name</span>
+                                    <span id="pb-student-name">—</span>
+                                </div>
+                                <div class="paper-bill-info">
+                                    <span>Class & Section</span>
+                                    <span id="pb-student-std">—</span>
+                                </div>
+                                <div class="paper-bill-info">
+                                    <span>Roll No.</span>
+                                    <span id="pb-student-roll">—</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="paper-bill-info-row">
+                            <div class="paper-bill-info-col">
+                                <div class="paper-bill-info">
+                                    <span>School</span>
+                                    <span id="pb-school-name">—</span>
+                                </div>
+                            </div>
+                            <div class="paper-bill-info-col">
+                                <div class="paper-bill-info">
+                                    <span>Parent Phone</span>
+                                    <span id="pb-phone">—</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="paper-bill-divider">
+
+                    <!-- Items Table -->
+                    <table class="paper-bill-items">
+                        <thead>
+                            <tr>
+                                <th style="width:8%">S.No</th>
+                                <th style="width:42%">Description</th>
+                                <th style="width:12%">Qty</th>
+                                <th style="width:15%">Rate</th>
+                                <th style="width:15%">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pb-items-body">
+                            <!-- Items will be populated here -->
+                        </tbody>
+                    </table>
+
+                    <hr class="paper-bill-divider">
+
+                    <!-- Totals -->
+                    <div class="paper-bill-totals-section">
+                        <div class="paper-bill-totals">
+                            <div class="paper-bill-total-row">
+                                <span>Subtotal (₹)</span>
+                                <span id="pb-subtotal">₹0.00</span>
+                            </div>
+                        </div>
+
+                        <hr class="paper-bill-divider-solid">
+
+                        <div class="paper-bill-totals">
+                            <div class="paper-bill-total-row grand">
+                                <span>GRAND TOTAL</span>
+                                <span id="pb-total">₹0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="paper-bill-divider">
+
+                    <!-- Mode of Payment -->
+                    <div class="paper-bill-info" style="text-align: center; margin: 0.5rem 0; font-weight: bold;">
+                        <span>Mode of Payment: </span>
+                        <span id="pb-payment-mode" style="text-transform: uppercase;">—</span>
+                    </div>
+
+                    <hr class="paper-bill-divider">
+
+                    <!-- Amount in Words -->
+                    <div class="paper-bill-amount-words">
+                        <strong>Amount in Words:</strong> <span id="pb-amount-words">Rupees Zero Only</span>
+                    </div>
+
+                    <hr class="paper-bill-divider">
+
+                    <!-- Payment Mode -->
+                    <div class="paper-bill-info" style="text-align: center; margin: 1rem 0; font-weight: bold;">
+                        <span>Mode of Payment: </span>
+                        <span id="pb-payment-mode" style="text-transform: uppercase;">—</span>
+                    </div>
+
+                    <!-- Payment Terms -->
+                    <div class="paper-bill-terms">
+                        <div class="paper-bill-terms-title">Payment Terms & Conditions:</div>
+                        <div class="paper-bill-terms-text">
+                            1. Goods once sold will not be taken back.<br>
+                            2. Payment should be made within 7 days.<br>
+                            3. Subject to Mumbai jurisdiction.<br>
+                            4. This is a computer generated invoice.
+                        </div>
+                    </div>
+
+                    <!-- Status Stamp -->
+                    <div style="text-align:center; margin: 1rem 0;">
+                        <div class="paper-bill-status-stamp" id="pb-status-stamp">DRAFT</div>
+                    </div>
+
+                    <!-- Signature Area -->
+                    <div class="paper-bill-signature">
+                        <div class="signature-line">
+                            <div class="signature-label">Customer Signature</div>
+                            <div class="signature-dash">_________________________</div>
+                        </div>
+                        <div class="signature-line">
+                            <div class="signature-label">Authorized Signatory</div>
+                            <div class="signature-dash">_________________________</div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="paper-bill-footer">
+                        <div class="paper-bill-thank">Thank you for your business!</div>
+                        <div class="paper-bill-website">www.uniformshop.com</div>
+                        <div class="paper-bill-barcode">|||||||||||||||||||||</div>
+                        <div class="paper-bill-barcode-label" id="pb-barcode-label">INV-0000</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action buttons below the paper -->
+            <div class="paper-bill-actions">
+                <button class="btn btn-outline" onclick="closeModal('bill-draft-modal')">
+                    <i class="ph ph-x"></i> Close
+                </button>
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="ph ph-printer"></i> Print
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Injection -->
+        <script src="supabase-config.js"></script>
+        <script src="deploy-config.js"></script>
+        <script src="app.js?v=15"></script>
+</body>
+
+</html>

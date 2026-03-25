@@ -1,0 +1,121 @@
+Standard,Item,Gender,size,Price,Stock
+1,girl shirt,girl,6,350,200
+1,pinafore,girl,6,630,200
+1,tie,girl,6,60,200
+1,belt,girl,6,80,200
+1,socks,girl,6,70,200
+1,boy shirt,boy,6,330,200
+1,pant,boy,6,430,200
+1,tie,boy,6,60,200
+1,belt,boy,6,80,200
+1,socks,boy,6,70,200
+1,pt suit,boy,6,870,200
+1,pt suit,girl,6,870,200
+2,girl shirt,girl,7,370,200
+2,pinafore,girl,7,660,200
+2,tie,girl,7,60,200
+2,belt,girl,7,80,200
+2,socks,girl,7,70,200
+2,boy shirt,boy,7,340,200
+2,pant,boy,7,470,200
+2,tie,boy,7,60,200
+2,belt,boy,7,80,200
+2,socks,boy,7,70,200
+2,pt suit,boy,7,910,200
+2,pt suit,girl,7,910,200
+3,girl shirt,girl,8,390,200
+3,pinafore,girl,8,690,200
+3,tie,girl,8,60,200
+3,belt,girl,8,80,200
+3,socks,girl,8,70,200
+3,boy shirt,boy,8,360,200
+3,pant,boy,8,500,200
+3,tie,boy,8,60,200
+3,belt,boy,8,80,200
+3,socks,boy,8,70,200
+3,pt suit,boy,8,960,200
+3,pt suit,girl,8,960,200
+4,girl shirt,girl,9,410,200
+4,pinafore,girl,9,720,200
+4,tie,girl,9,60,200
+4,belt,girl,9,80,200
+4,socks,girl,9,70,200
+4,boy shirt,boy,9,380,200
+4,pant,boy,9,530,200
+4,tie,boy,9,60,200
+4,belt,boy,9,80,200
+4,socks,boy,9,70,200
+4,pt suit,boy,9,1010,200
+4,pt suit,girl,9,1010,200
+5,girl shirt,girl,10,420,200
+5,pinafore,girl,10,720,200
+5,tie,girl,10,80,200
+5,belt,girl,10,80,200
+5,socks,girl,10,90,200
+5,boy shirt,boy,10,430,200
+5,pant,boy,10,690,200
+5,tie,boy,10,80,200
+5,belt,boy,10,80,200
+5,socks,boy,10,90,200
+5,pt suit,boy,10,1060,200
+5,pt suit,girl,10,1060,200
+6,girl shirt,girl,11,440,200
+6,pinafore,girl,11,750,200
+6,tie,girl,11,80,200
+6,belt,girl,11,80,200
+6,socks,girl,11,90,200
+6,boy shirt,boy,11,450,200
+6,pant,boy,11,720,200
+6,tie,boy,11,80,200
+6,belt,boy,11,80,200
+6,socks,boy,11,90,200
+6,pt suit,boy,11,1110,200
+6,pt suit,girl,11,1110,200
+7,girl shirt,girl,12,470,200
+7,pinafore,girl,12,800,200
+7,tie,girl,12,80,200
+7,belt,girl,12,80,200
+7,socks,girl,12,90,200
+7,boy shirt,boy,12,490,200
+7,pant,boy,12,730,200
+7,tie,boy,12,80,200
+7,belt,boy,12,80,200
+7,socks,boy,12,90,200
+7,pt suit,boy,12,1160,200
+7,pt suit,girl,12,1160,200
+8,girl shirt,girl,14,490,200
+8,pinafore,girl,14,860,200
+8,tie,girl,14,80,200
+8,belt,girl,14,80,200
+8,socks,girl,14,90,200
+8,boy shirt,boy,14,510,200
+8,pant,boy,14,760,200
+8,tie,boy,14,80,200
+8,belt,boy,14,80,200
+8,socks,boy,14,90,200
+8,pt suit,boy,14,1210,200
+8,pt suit,girl,14,1210,200
+9,girl shirt,girl,15,520,200
+9,pinafore,girl,15,900,200
+9,tie,girl,15,80,200
+9,belt,girl,15,80,200
+9,socks,girl,15,90,200
+9,boy shirt,boy,15,540,200
+9,pant,boy,15,780,200
+9,tie,boy,15,80,200
+9,belt,boy,15,80,200
+9,socks,boy,15,90,200
+9,pt suit,boy,15,1260,200
+9,pt suit,girl,15,1260,200
+10,girl shirt,girl,16,530,200
+10,pina,girl,16,960,200
+10,tie,girl,16,80,200
+10,belt,girl,16,80,200
+10,socks,girl,16,90,200
+10,boy shirt,boy,16,560,200
+10, pant,boy,16,810,200
+10,tie,boy,16,80,200
+10,belt,boy,16,80,200
+10,socks,boy,16,90,200
+10,pt suit,boy,16,1310,200
+10,pt suit,girl,16,1310,200
