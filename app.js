@@ -37,7 +37,7 @@ const ITEM_ICON_BY_DB_FIELD = {
     track_pant: 'ph-pants',
     blazer: 'ph-coat-hanger',
     sports_uniform: 'ph-t-shirt',
-    belt: 'ph-arrows-in-line-horizontal',
+    belt: 'img/belt-icon.svg',
     house_shoes: 'ph-sneaker',
     school_shoes: 'ph-boot',
     socks_house: 'ph-footprints',
@@ -583,6 +583,7 @@ function renderStudentsTable(filterText = '') {
             <td><span class="badge badge-outline">${s.std}</span></td>
             <td class="font-medium">${s.name}</td>
             <td>${s.phone}</td>
+            <td>${s.house || '-'}</td>
             <td class="text-right">
                 <div class="dropdown" id="dropdown-${s.id}">
                     <button class="dropdown-toggle" onclick="toggleDropdown('${s.id}')"><i class="ph ph-dots-three"></i></button>

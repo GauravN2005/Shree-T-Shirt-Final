@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Belt icon">
+  <!-- Belt buckle -->
+  <rect x="35" y="45" width="58" height="38" fill="#8da0b8" rx="2"/>
+  <rect x="42" y="50" width="44" height="28" fill="#9fb1c7" rx="1"/>
+  <!-- Belt straps -->
+  <rect x="25" y="58" width="10" height="12" fill="#8da0b8"/>
+  <rect x="93" y="58" width="10" height="12" fill="#8da0b8"/>
+</svg>
